@@ -3,6 +3,15 @@ const fs = require('fs')
 const path = require('path')
 const _ = require('lodash')
 
+function obj(...keyValues) {
+  return _
+    .chunk(keyValues, 2)
+    .reduce((acc, [key, value]) => {
+      acc[key] = value
+      return acc
+    }, {})
+}
+
 const cache = {}
 
 function compile(file) {
@@ -27,8 +36,13 @@ function compile(file) {
     escape: /<\?=([\s\S]+?)\?>/g,
     imports: {
       random: new Random(),
+      obj,
       ...fileInfo,
       include(childPath, data = {}) {
+        if (Array.isArray(data)) {
+          data = obj(...data)
+        }
+
         return compile(path.resolve(fileInfo.dirname, childPath)).build(data)
       }
     }
