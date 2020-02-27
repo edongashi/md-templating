@@ -4,17 +4,19 @@ const fs = require('fs')
 const util = require('util')
 const exec = util.promisify(require('child_process').exec)
 const commander = require('commander')
+const pLimit = require('p-limit')
 const rimraf = require('rimraf')
 const { compile } = require('./document')
 
 function parse(args) {
   return new commander.Command()
     .option('-p, --purge', 'Purge output directory first')
-    .option('-f, --file <file>', 'Source file')
-    .option('-r, --repeat [times]', 'Files to create', 1)
-    .option('-o, --outdir [dir]', 'Output directory', 'compiled')
-    .option('-n, --name [name]', 'Output file name', '@{basename}-@{id}@{extension}')
-    .option('-c, --cmd [cmd]', 'Shell command or script to apply to output')
+    .requiredOption('-f, --file <file>', 'Source file')
+    .option('-r, --repeat <times>', 'Files to create', 1)
+    .option('-o, --outdir <dir>', 'Output directory', 'compiled')
+    .option('-n, --name <name>', 'Output file name', '@{basename}-@{id}@{extension}')
+    .option('-c, --cmd <cmd>', 'Shell command or script to apply to output')
+    .option('--concurrency <concurrency>', 'Maximum concurrent shell commands.', 1)
     .parse(args)
 }
 
@@ -26,8 +28,11 @@ async function main(args) {
     repeat,
     outdir,
     cmd,
-    purge
+    purge,
+    concurrency = 1
   } = program
+
+  const limit = pLimit(parseInt(concurrency))
 
   const resolvedOutdir = path.resolve(outdir)
   if (!file) {
@@ -85,8 +90,10 @@ async function main(args) {
 
     const cmdstr = cmdTemplate(data)
     if (cmdstr) {
-      console.debug(`Running ${cmdstr}`)
-      await exec(cmdstr)
+      limit(() => {
+        console.debug(`Running ${cmdstr}`)
+        return exec(cmdstr)
+      }).catch(reason => console.error(reason))
     }
   }
 }
