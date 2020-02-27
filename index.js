@@ -68,12 +68,14 @@ async function main(args) {
     let data = { id }
     const outfile = path.join(resolvedOutdir, nameTemplate(data))
     const outextension = path.extname(outfile)
+    const outdirname = path.dirname(outfile)
     const outfilename = path.basename(outfile)
     const outbasename = path.basename(outfile, extension)
     data = {
       id,
       outfile,
       outfilename,
+      outdirname,
       outbasename,
       outextension
     }
